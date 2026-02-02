@@ -21,7 +21,8 @@ export default function ScheduleGenerator({
 
     try {
       const response = await fetch(
-        "https://ncsaa-scheduler-backend-production.up.railway.app/api/schedule",
+        "https://ncsaa.abuelahealth.com/api/schedule",
+        // "http://localhost:8000/api/schedule",
         {
           method: "POST",
           headers: {
