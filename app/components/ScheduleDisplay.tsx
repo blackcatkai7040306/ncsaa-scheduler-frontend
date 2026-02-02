@@ -74,9 +74,29 @@ export default function ScheduleDisplay({ schedule }: ScheduleDisplayProps) {
       grouped[game.date].push(game);
     });
     
-    // Sort games within each date by time
+    // Sort games within each date by COURT first, then TIME
+    // This helps see all games for each court together
     Object.keys(grouped).forEach(date => {
-      grouped[date].sort((a, b) => a.time.localeCompare(b.time));
+      grouped[date].sort((a, b) => {
+        // Extract base facility name (before " - Court")
+        const getFacilityBase = (facility: string) => {
+          const match = facility.match(/^(.+?)\s*-\s*Court/i);
+          return match ? match[1] : facility;
+        };
+        
+        // First sort by base facility name
+        const facilityA = getFacilityBase(a.facility);
+        const facilityB = getFacilityBase(b.facility);
+        const facilityCompare = facilityA.localeCompare(facilityB);
+        if (facilityCompare !== 0) return facilityCompare;
+        
+        // Then by court number (use the court field, not extracted from string)
+        const courtCompare = a.court - b.court;
+        if (courtCompare !== 0) return courtCompare;
+        
+        // Finally by time
+        return a.time.localeCompare(b.time);
+      });
     });
     
     return grouped;
@@ -203,6 +223,9 @@ export default function ScheduleDisplay({ schedule }: ScheduleDisplayProps) {
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Facility
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Time
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -217,36 +240,42 @@ export default function ScheduleDisplay({ schedule }: ScheduleDisplayProps) {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Away Team
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Facility
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {gamesByDate[date].map((game, idx) => (
-                    <tr key={game.id} className={idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {game.time}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getDivisionColor(game.division)}`}>
-                          {game.division}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        {game.home_team}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-xs font-semibold text-gray-400 dark:text-gray-500">
-                        VS
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        {game.away_team}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                        {game.facility}
-                      </td>
-                    </tr>
-                  ))}
+                  {gamesByDate[date].map((game, idx) => {
+                    // Check if this is the first game for a new facility/court
+                    const prevGame = idx > 0 ? gamesByDate[date][idx - 1] : null;
+                    const isNewCourt = !prevGame || prevGame.facility !== game.facility;
+                    
+                    return (
+                      <tr 
+                        key={game.id} 
+                        className={`${idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'} ${isNewCourt ? 'border-t-2 border-blue-500' : ''}`}
+                      >
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                          {game.facility}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {game.time}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getDivisionColor(game.division)}`}>
+                            {game.division}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                          {game.home_team}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-xs font-semibold text-gray-400 dark:text-gray-500">
+                          VS
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                          {game.away_team}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
